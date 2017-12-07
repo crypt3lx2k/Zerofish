@@ -20,7 +20,7 @@ config = util.AttrDict (**{
     'learning_rate' : 1e-3,
     'l2_scale' : 1e-3,
     'num_epochs' : 1,
-    'batch_size' : 1024,
+    'batch_size' : 32,
 
     'filters' : 32,
     'modules' : 0,

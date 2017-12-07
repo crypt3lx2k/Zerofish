@@ -32,7 +32,7 @@ def play_game (inference):
 
     # Set up search tree
     state = game_state.GameState()
-    tree = mcts.MCTS(inference, state)
+    tree = mcts.MCTS(inference, state, num_threads=8)
 
     # Play game
     while not tree.state.done():
@@ -77,7 +77,7 @@ def write_game_records (out_file, actions, policies, indices, outcome, last_turn
     # Run through game to create feature vectors and produce output
     for i, action in enumerate(actions):
         # Extract features
-        feature = state.observation().get('image')
+        feature = state.observation().reshape((1, 8, 8, -1))
 
         # Calculate value of game based on who's to play
         value = outcome if state.turn() == last_turn else -outcome

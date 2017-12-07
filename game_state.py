@@ -10,9 +10,16 @@ import adapter
 import chess
 
 class GameState (object):
-    def __init__ (self):
-        self.state = chess.Board()
+    def __init__ (self, board=None):
+        if board is None:
+            self.state = chess.Board()
+        else:
+            self.state = board.copy()
+
         self.invalidate()
+
+    def copy (self):
+        return GameState(self.state)
 
     def invalidate (self):
         self._actions = None
@@ -61,9 +68,7 @@ class GameState (object):
         return adapter.move_to_label_flat(move)
 
     def observation (self):
-        return {
-            'image' : adapter.position_to_hwc(self.state).reshape((1,8,8,-1))
-        }
+        return adapter.position_to_hwc(self.state)
 
     def done (self):
         return self.state.is_game_over()

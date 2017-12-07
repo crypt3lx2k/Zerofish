@@ -116,48 +116,16 @@ class Node (object):
         moves.append(action)
         return self.children[index].pv_recurse(moves)
 
-class MCTS (object):
-    def __init__ (self, model, state):
-        self.model = SingleThreadedCache(model, state)
-        self.state = state
+class VirtualThread (object):
+    def __init__ (self, parent):
+        self.parent = parent
+        self.state = self.parent.state.copy()
+        
+        self.node = None
+        self.index = None
+        self.trajectory = None
 
-        self.root, self.root_value = self.expand()
-
-    def search (self, num_simulations):
-        for simulation in xrange(num_simulations):
-            self.search_root()
-
-        return self.root
-
-    def act (self, index):
-        # Get action from node
-        action = self.root.actions[index]
-
-        # Look up new node and value
-        child = self.root.get_child(index)
-        value = self.root.Q[index]
-
-        # Update root with child node
-        self.root = child
-        self.root_value = value
-
-        # Update game state with action
-        self.state.push_action(action)
-
-        # Early exit if game is over
-        if self.state.done():
-            return self
-
-        # If child node didn't exist we need to expand root 
-        if child is None:
-            self.root, self.root_value = self.expand()
-
-        return self
-
-    def search_root (self):
-        # Set current node to root node
-        node = self.root
-
+    def get (self, node):
         # Keep track of path taken
         trajectory = []
 
@@ -171,18 +139,36 @@ class MCTS (object):
 
             node = child
 
+        # Store search state
+        self.node = node
+        self.index = index
+        self.trajectory = trajectory
+
+        return self.state
+
+    def put (self, logits, value):
+        # Get search state
+        node = self.node
+        index = self.index
+        trajectory = self.trajectory
+
         # Back up value if terminal
         if self.state.done():
             return self.backup(trajectory, self.state.reward())
 
-        # Create new node
-        child, value = self.expand()
+        # If child node doesn't exist
+        if node.get_child(index) is None:
+            # Create child
+            child = self.parent.expand(self.state.actions(), logits)
 
-        # Link child into tree
-        node.set_child(index, child)
+            # Link child into tree
+            node.set_child(index, child)
 
         # Back up value-estimate to root
         return self.backup(trajectory, value)
+
+    def push_action (self, action):
+        self.state.push_action(action)
 
     def select (self, node):
         # We're in a valid node so pick index
@@ -209,15 +195,79 @@ class MCTS (object):
 
             assert node.actions[index] == action
 
-    def expand (self):
-        # Neural network evaluation
-        logits, value = self.model.infer (
-            self.state.observation()
-        )
+class MCTS (object):
+    def __init__ (self, model, state, num_threads=1):
+        self.model = model
+        self.state = state
 
+        self.num_threads = num_threads
+        self.threads = self.spawn_threads()
+
+        self.root = self.expand_root()
+
+    def spawn_threads (self):
+        threads = []
+
+        for thread_id in xrange(self.num_threads):
+            thread = VirtualThread(self)
+            threads.append(thread)
+
+        return threads
+
+    def search (self, num_simulations):
+        for simulation in xrange(num_simulations//self.num_threads):
+            states = []
+
+            for thread in self.threads:
+                state = thread.get(self.root)
+                states.append(state)
+
+            observations = map(lambda state : state.observation(), states)
+            observations = np.stack(observations)
+            batch_logits, batch_values = self.model.infer({'image' : observations})
+
+            for i, thread in enumerate(self.threads):
+                thread.put(batch_logits[i], batch_values[i][0])
+
+        return self.root
+
+    def act (self, index):
+        # Get action from node
+        action = self.root.actions[index]
+
+        # Look up new node and value
+        child = self.root.get_child(index)
+        value = self.root.Q[index]
+
+        # Update root with child node
+        self.root = child
+
+        # Update game state with action
+        self.state.push_action(action)
+
+        # Push action to threads
+        for thread in self.threads:
+            thread.push_action(action)
+
+        # Early exit if game is over
+        if self.state.done():
+            return self
+
+        # If child node didn't exist we need to expand root 
+        if child is None:
+            self.root = self.expand_root()
+
+        return self
+
+    def expand_root (self):
+        logits, value = self.model.infer({'image' : [self.state.observation()]})
+        self.root_value = value[0][0]
+        return self.expand(self.state.actions(), logits[0])
+
+    def expand (self, actions, logits):
         # Legal actions in this state
         actions = sorted (
-            self.state.actions(),
+            actions,
             key=lambda action : logits[action],
             reverse=True
         )
@@ -237,5 +287,51 @@ class MCTS (object):
         node = Node(actions)
         node.P[:] = probs
 
-        return node, value
+        return node
 
+    def print_tree (self):
+        graph = []
+        graph.append('strict digraph {')
+
+        self.print_nodes(self.root, self.root_value, graph)
+        self.print_edges(self.root, graph)
+
+        graph.append('}')
+        return '\n'.join(graph)
+
+    def print_nodes (self, node, value, graph):
+        key = id(node)
+
+        graph.append('\t"{}" [label={:.2f}]'.format(key, value))
+
+        for index in node.children:
+            child = node.children[index]
+            action = node.actions[index]
+
+            if node.N[index]:
+                self.state.push_action(action)
+                self.print_nodes(child, node.Q[index], graph)
+                self.state.pop_action()
+
+        return graph
+
+    def print_edges (self, node, graph):
+        key = id(node)
+
+        for index in node.children:
+            child = node.children[index]
+            child_key = id(child)
+
+            action = node.actions[index]
+            move = self.state.parse_action(action)
+
+            if node.N[index]:
+                graph.append (
+                    '\t"{}" -> "{}" [label="{}, {}"]'.format (
+                        key, child_key, self.state.state.san(move), node.N[index]
+                    )
+                )
+
+                self.state.push_action(action)
+                self.print_edges(child, graph)
+                self.state.pop_action()
