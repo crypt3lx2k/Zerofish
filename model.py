@@ -9,6 +9,15 @@ from six.moves import xrange
 import tempfile
 import tensorflow as tf
 
+cpu_config = tf.ConfigProto (
+    device_count = {
+        'CPU' : 1,
+        'GPU' : 0
+    },
+    intra_op_parallelism_threads=1,
+    inter_op_parallelism_threads=1,
+)
+
 class Model (object):
     def __init__ (self, spec):
         self.spec = spec

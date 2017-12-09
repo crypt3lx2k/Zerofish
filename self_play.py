@@ -133,7 +133,8 @@ def write_pgn (pgn_dir, name, moves, outcome, last_turn):
 def main (FLAGS, _):
     builder = model.ModelSpecBuilder (
         model_fn=model_fn.model_fn,
-        model_dir=FLAGS.model_dir
+        model_dir=FLAGS.model_dir,
+        config=model.cpu_config
     )
 
     inference_spec = builder.build_inference_spec (
