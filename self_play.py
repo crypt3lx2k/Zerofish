@@ -9,13 +9,9 @@ from six.moves import xrange
 import datetime
 import os
 
-import chess
-
 import numpy as np
 import tensorflow as tf
 
-import adapter
-import config
 import game_state
 import input_fn
 import mcts
