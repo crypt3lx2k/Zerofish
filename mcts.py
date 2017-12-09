@@ -19,31 +19,6 @@ n_vl = 5
 def policy (node, T=0.0):
     return util.softcount(node.N, T=T)
 
-class SingleThreadedCache (object):
-    def __init__ (self, model, state):
-        self.model = model
-        self.state = state
-
-        self.cache = {}
-
-    def key (self):
-        return self.state.state.epd()
-
-    def infer (self, observation):
-        key = self.key()
-
-        if not self.cache.has_key(key):
-            logits, value = self.model.infer (
-                observation
-            )
-
-            logits = logits[0]
-            value = value[0][0]
-
-            self.cache[key] = (logits, value)
-
-        return self.cache[key]
-
 class Node (object):
     __slots__ = ['actions', 'children', 'N', 'Q', 'P']
 
