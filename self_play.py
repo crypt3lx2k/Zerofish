@@ -9,6 +9,8 @@ from six.moves import xrange
 import datetime
 import os
 
+import chess
+
 import numpy as np
 import tensorflow as tf
 
@@ -88,9 +90,9 @@ def write_game_records (out_file, actions, policies, indices, outcome, last_turn
 
     return moves
 
-def write_records (FLAGS, name, actions, policies, indices, outcome, last_turn):
+def write_records (data_dir, name, actions, policies, indices, outcome, last_turn):
     # Make directory for data if needed
-    dirs = FLAGS.data_dir
+    dirs = data_dir
     if not os.path.exists(dirs):
         print('making directories {}'.format(dirs))
         os.makedirs(dirs)
@@ -106,8 +108,8 @@ def write_records (FLAGS, name, actions, policies, indices, outcome, last_turn):
 
     return moves
 
-def write_pgn (FLAGS, name, moves, outcome, last_turn):
-    dirs = FLAGS.pgn_dir
+def write_pgn (pgn_dir, name, moves, outcome, last_turn):
+    dirs = pgn_dir
     if not os.path.exists(dirs):
         print('making directories {}'.format(dirs))
         os.makedirs(dirs)
@@ -156,8 +158,8 @@ def main (FLAGS, _):
     # Create file path
     name = datetime.datetime.utcnow().isoformat()
 
-    moves = write_records(FLAGS, name, actions, policies, indices, outcome, last_turn)
-    write_pgn(FLAGS, name, moves, outcome, last_turn)
+    moves = write_records(FLAGS.data_dir, name, actions, policies, indices, outcome, last_turn)
+    write_pgn(FLAGS.pgn_dir, name, moves, outcome, last_turn)
 
     return 0
 
