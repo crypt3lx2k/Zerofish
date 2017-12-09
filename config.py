@@ -13,8 +13,8 @@ import util
 
 config = util.AttrDict (**{
     # Default values for command line arguments
-    'data_dir' : 'data',
-    'model_dir' : '/tmp/agz/model',
+    'data_dir' : '/tmp/zf/data',
+    'model_dir' : '/tmp/zf/model',
 
     'optimizer' : 'Adam',
     'learning_rate' : 1e-3,
