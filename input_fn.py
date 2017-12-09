@@ -14,6 +14,9 @@ from config import config
 def placeholder_dict (names, shapes, dtypes):
     placeholders = {}
 
+    if names is None:
+        return placeholders
+
     for name, shape, dtype in zip(names, shapes, dtypes):
         placeholders[name] = tf.placeholder (
             dtype=dtype, shape=(None,) + shape, name=name
@@ -23,7 +26,7 @@ def placeholder_dict (names, shapes, dtypes):
 
 def placeholder_input_fn (
         feature_names, feature_shapes, feature_dtypes,
-        label_names, label_shapes, label_dtypes
+        label_names=None, label_shapes=None, label_dtypes=None
 ):
     def input_fn ():
         features = placeholder_dict (

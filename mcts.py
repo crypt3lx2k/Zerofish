@@ -63,9 +63,9 @@ class Node (object):
         return np.argmin(self.N)
 
     def puct_index (self):
-        # If any N are zero, expand node before PUCT
-        if np.any(self.N == 0):
-            return self.first_zero_index()
+        # # If any N are zero, expand node before PUCT
+        # if np.any(self.N == 0):
+        #     return self.first_zero_index()
 
         # Calculate action values and upper confidence bound
         Q = self.Q

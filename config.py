@@ -14,6 +14,7 @@ import util
 config = util.AttrDict (**{
     # Default values for command line arguments
     'data_dir' : '/tmp/zf/data',
+    'pgn_dir' : '/tmp/zf/pgns',
     'model_dir' : '/tmp/zf/model',
 
     'optimizer' : 'Adam',
@@ -50,6 +51,12 @@ def get_FLAGS (config):
         '--data_dir', type=str, metavar='dir',
         default=config.data_dir,
         help='Directory where data is stored.'
+    )
+
+    parser.add_argument (
+        '--pgn_dir', type=str, metavar='dir',
+        default=config.pgn_dir,
+        help='Directory where pgns are stored.'
     )
 
     parser.add_argument (

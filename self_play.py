@@ -39,7 +39,7 @@ def play_game (inference):
         print(tree.state.state.unicode())
 
         # Perform search
-        node = tree.search(1024)
+        node = tree.search(128)
 
         # Calculate move probabilities and get action index
         probs = mcts.policy(node, T=1.0)
@@ -50,7 +50,7 @@ def play_game (inference):
         value = node.Q[index]
         move = tree.state.parse_action(action)
 
-        print(tree.state.state.san(move))
+        print(tree.state.state.san(move), value)
 
         tree.act(index)
 
@@ -65,7 +65,7 @@ def play_game (inference):
     last_turn = not tree.state.turn()
 
     print(tree.state.state.unicode())
-    print(chess.Board().variation_san(moves))
+    print(' '.join([chess.Board().variation_san(moves), state.state.result()]))
 
     return actions, policies, indices, outcome, last_turn
 
@@ -92,6 +92,46 @@ def write_game_records (out_file, actions, policies, indices, outcome, last_turn
 
     return moves
 
+def write_records (FLAGS, name, actions, policies, indices, outcome, last_turn):
+    # Make directory for data if needed
+    dirs = FLAGS.data_dir
+    if not os.path.exists(dirs):
+        print('making directories {}'.format(dirs))
+        os.makedirs(dirs)
+
+    path = os.path.join(dirs, name) + '.tfrecords'
+
+    # Open tfrecords file
+    options = tf.python_io.TFRecordOptions(tf.python_io.TFRecordCompressionType.GZIP)
+    with tf.python_io.TFRecordWriter(path, options=options) as out_file:
+        print('opened binary writer at {}'.format(path))
+        moves = write_game_records(out_file, actions, policies, indices, outcome, last_turn)
+    print('closed binary writer at {}'.format(path))
+
+    return moves
+
+def write_pgn (FLAGS, name, moves, outcome, last_turn):
+    dirs = FLAGS.pgn_dir
+    if not os.path.exists(dirs):
+        print('making directories {}'.format(dirs))
+        os.makedirs(dirs)
+
+    path = os.path.join(dirs, name) + '.pgn'
+    pgn = [chess.Board().variation_san(moves)]
+
+    if outcome:
+        if last_turn == chess.WHITE:
+            pgn.append('1-0')
+        else:
+            pgn.append('0-1')
+    else:
+        pgn.append('1/2-1/2')
+
+    with open(path, 'w') as out_file:
+        print('opened {}'.format(path))
+        print(' '.join(pgn), file=out_file)
+    print('closed {}'.format(path))
+
 def main (FLAGS, _):
     builder = model.ModelSpecBuilder (
         model_fn=model_fn.model_fn,
@@ -103,10 +143,6 @@ def main (FLAGS, _):
             feature_names=('image',),
             feature_shapes=(FLAGS.input_shape,),
             feature_dtypes=(tf.int8,),
-
-            label_names=('policy', 'value'),
-            label_shapes=((FLAGS.n_classes,), (1,)),
-            label_dtypes=(tf.float32, tf.float32),
         ),
 
         params={
@@ -118,40 +154,14 @@ def main (FLAGS, _):
 
     inference = model.FeedingInferenceModel(inference_spec)
 
-    # Make directory for data if needed
-    dirs = FLAGS.data_dir
-    if not os.path.exists(dirs):
-        print('making directories {}'.format(dirs))
-        os.makedirs(dirs)
-
     with inference:
         actions, policies, indices, outcome, last_turn = play_game(inference)
 
     # Create file path
     name = datetime.datetime.utcnow().isoformat()
-    path = '{}/{}.{}'.format(dirs, name, 'tfrecords')
 
-    # Open tfrecords file
-    options = tf.python_io.TFRecordOptions(tf.python_io.TFRecordCompressionType.GZIP)
-    with tf.python_io.TFRecordWriter(path, options=options) as out_file:
-        print('opened binary writer at {}'.format(path))
-        moves = write_game_records(out_file, actions, policies, indices, outcome, last_turn)
-    print('closed binary writer at {}'.format(path))
-
-    path = '{}/{}.{}'.format(dirs, name, 'pgn')
-    pgn = [chess.Board().variation_san(moves)]
-
-    if outcome:
-        if last_turn == chess.WHITE:
-            pgn.append('1-0')
-        else:
-            pgn.append('0-1')
-    else:
-        pgn.append('1/2-1/2')
-
-    print('writing {}'.format(path))
-    with open(path, 'w') as out_file:
-        print(' '.join(pgn), file=out_file)
+    moves = write_records(FLAGS, name, actions, policies, indices, outcome, last_turn)
+    write_pgn(FLAGS, name, moves, outcome, last_turn)
 
     return 0
 
