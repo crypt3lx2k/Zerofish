@@ -88,9 +88,10 @@ class FeedingTrainingModel (FeedingInferenceModel):
         )
 
 class ModelSpecBuilder (object):
-    def __init__ (self, model_fn=None, model_dir=None):
+    def __init__ (self, model_fn=None, model_dir=None, config=None):
         self.model_fn = model_fn
         self.model_dir = model_dir
+        self.config = config
 
         if self.model_dir is None:
             self.model_dir = tempfile.mkdtemp()
@@ -135,7 +136,8 @@ class ModelSpecBuilder (object):
             global_step = tf.train.get_or_create_global_step()
             session = tf.train.MonitoredSession (
                 session_creator=tf.train.ChiefSessionCreator(
-                    checkpoint_dir=self.model_dir
+                    checkpoint_dir=self.model_dir,
+                    config=self.config
                 )
             )
 
@@ -154,7 +156,8 @@ class ModelSpecBuilder (object):
 
         with spec.graph.as_default() as graph:
             session = tf.train.MonitoredTrainingSession (
-                checkpoint_dir=self.model_dir
+                checkpoint_dir=self.model_dir,
+                config=self.config
             )
 
             spec.session = session
