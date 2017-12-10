@@ -59,15 +59,15 @@ def play_game (inference):
         moves.append(move)
 
     # Get game outcome and last player to move
-    outcome = tree.state.reward()
-    last_turn = not tree.state.turn()
+    outcome = -tree.state.reward()
+    winner = not tree.state.turn()
 
     print(tree.state.state.unicode())
     print(' '.join([chess.Board().variation_san(moves), state.state.result()]))
 
-    return actions, policies, indices, outcome, last_turn
+    return actions, policies, indices, outcome, winner
 
-def write_game_records (out_file, actions, policies, indices, outcome, last_turn):
+def write_game_records (out_file, actions, policies, indices, outcome, winner):
     # Create new state
     state = game_state.GameState()
     moves = []
@@ -78,7 +78,7 @@ def write_game_records (out_file, actions, policies, indices, outcome, last_turn
         feature = state.observation().reshape((1, 8, 8, -1))
 
         # Calculate value of game based on who's to play
-        value = outcome if state.turn() == last_turn else -outcome
+        value = outcome if state.turn() == winner else -outcome
 
         # Write example to disk
         example = output_fn.convert_example(feature, value, policies[i], indices[i])
@@ -90,7 +90,7 @@ def write_game_records (out_file, actions, policies, indices, outcome, last_turn
 
     return moves
 
-def write_records (data_dir, name, actions, policies, indices, outcome, last_turn):
+def write_records (data_dir, name, actions, policies, indices, outcome, winner):
     # Make directory for data if needed
     dirs = data_dir
     if not os.path.exists(dirs):
@@ -103,12 +103,12 @@ def write_records (data_dir, name, actions, policies, indices, outcome, last_tur
     options = tf.python_io.TFRecordOptions(tf.python_io.TFRecordCompressionType.GZIP)
     with tf.python_io.TFRecordWriter(path, options=options) as out_file:
         print('opened binary writer at {}'.format(path))
-        moves = write_game_records(out_file, actions, policies, indices, outcome, last_turn)
+        moves = write_game_records(out_file, actions, policies, indices, outcome, winner)
     print('closed binary writer at {}'.format(path))
 
     return moves
 
-def write_pgn (pgn_dir, name, moves, outcome, last_turn):
+def write_pgn (pgn_dir, name, moves, outcome, winner):
     dirs = pgn_dir
     if not os.path.exists(dirs):
         print('making directories {}'.format(dirs))
@@ -118,7 +118,7 @@ def write_pgn (pgn_dir, name, moves, outcome, last_turn):
     pgn = [chess.Board().variation_san(moves)]
 
     if outcome:
-        if last_turn == chess.WHITE:
+        if winner == chess.WHITE:
             pgn.append('1-0')
         else:
             pgn.append('0-1')
@@ -154,13 +154,13 @@ def main (FLAGS, _):
     inference = model.FeedingInferenceModel(inference_spec)
 
     with inference:
-        actions, policies, indices, outcome, last_turn = play_game(inference)
+        actions, policies, indices, outcome, winner = play_game(inference)
 
     # Create file path
     name = datetime.datetime.utcnow().isoformat()
 
-    moves = write_records(FLAGS.data_dir, name, actions, policies, indices, outcome, last_turn)
-    write_pgn(FLAGS.pgn_dir, name, moves, outcome, last_turn)
+    moves = write_records(FLAGS.data_dir, name, actions, policies, indices, outcome, winner)
+    write_pgn(FLAGS.pgn_dir, name, moves, outcome, winner)
 
     return 0
 

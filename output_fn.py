@@ -23,7 +23,6 @@ def bytes_feature (value):
     return tf.train.Feature(bytes_list=tf.train.BytesList(value=value))
 
 def create_features (feature, value, pi_value, pi_index):
-    # TODO: policy vector from dense to sparse?
     return tf.train.Features (feature={
         'feature' : bytes_feature([feature.tostring()]),
         'value' : float_feature([value]),
