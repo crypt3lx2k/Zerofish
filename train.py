@@ -26,7 +26,7 @@ def main (FLAGS, _):
 
             batch_size=FLAGS.batch_size,
             num_epochs=FLAGS.num_epochs,
-            buffer_size=65535
+            buffer_size=16384
         ),
 
         params={

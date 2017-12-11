@@ -69,8 +69,13 @@ def parse_fn (example):
         validate_indices=False
     )
 
-    legal_mask = tf.one_hot(pi_index, config.n_classes)
-    legal_mask = tf.reduce_max(legal_mask, axis=0, name='legal_mask')
+    legal_mask = tf.sparse_to_dense (
+        sparse_indices=pi_index,
+        output_shape=[config.n_classes],
+        sparse_values=tf.zeros_like(pi_value),
+        default_value=tf.float32.min,
+        validate_indices=False
+    )
 
     value = example['value']
 

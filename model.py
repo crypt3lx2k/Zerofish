@@ -113,8 +113,9 @@ class ModelSpecBuilder (object):
         with graph.as_default():
             global_step = tf.train.get_or_create_global_step()
 
-            with tf.variable_scope('input'):
-                features, labels = input_fn()
+            with tf.device('/cpu:0'):
+                with tf.variable_scope('input'):
+                    features, labels = input_fn()
 
             spec = self.model_fn (
                 features=features,

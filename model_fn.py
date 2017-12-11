@@ -176,26 +176,10 @@ def model_fn (features, labels, mode, params):
             weights=1.0/4.0
         )
 
-        # policy_loss = tf.losses.softmax_cross_entropy (
-        #     onehot_labels=labels['policy'], logits=policy,
-        #     weights=1.0
-        # )
-
-        # Calculate explicit softmax
-        probabilities = tf.nn.softmax(policy)
-
-        # Mask out illegal moves
-        probabilities_masked = probabilities * features['legal_mask']
-
-        # Re-normalize to legal probability distribution
-        probabilities_normalized = probabilities_masked/(tf.reduce_sum(probabilities_masked) + 1e-8)
-
-        # Cross-entropy
-        policy_loss = -labels['policy'] * tf.log(probabilities_normalized)
-        policy_loss = tf.reduce_sum(policy_loss, axis=-1, name='batch_policy_loss')
-        policy_loss = tf.reduce_mean(policy_loss, name='policy_loss')
-
-        tf.losses.add_loss(policy_loss)
+        policy_loss = tf.losses.softmax_cross_entropy (
+            onehot_labels=labels['policy'], logits=policy + features['legal_mask'],
+            weights=1.0
+        )
 
         # Get l2 regularization loss
         l2_loss = tf.contrib.layers.apply_regularization (
