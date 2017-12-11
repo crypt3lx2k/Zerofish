@@ -69,9 +69,12 @@ def parse_fn (example):
         validate_indices=False
     )
 
+    legal_mask = tf.one_hot(pi_index, config.n_classes)
+    legal_mask = tf.reduce_max(legal_mask, axis=0, name='legal_mask')
+
     value = example['value']
 
-    return image, value, policy
+    return image, legal_mask, value, policy
 
 def dataset_input_fn (path, batch_size=32, num_epochs=1, buffer_size=2048):
     def input_fn ():
@@ -83,8 +86,8 @@ def dataset_input_fn (path, batch_size=32, num_epochs=1, buffer_size=2048):
         dataset = dataset.batch(batch_size)
 
         iterator = dataset.make_one_shot_iterator()
-        image, value, policy = iterator.get_next()
+        image, legal_mask, value, policy = iterator.get_next()
 
-        return {'image' : image}, {'value' : value, 'policy' : policy}
+        return {'image' : image, 'legal_mask' : legal_mask}, {'value' : value, 'policy' : policy}
 
     return input_fn
