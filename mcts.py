@@ -11,7 +11,7 @@ import numpy as np
 import util
 
 # TODO: Fix these variables
-c_puct = 5.0
+c_puct = 0.1
 eps = 0.25
 dirichlet_alpha = 0.3
 n_vl = 5
@@ -20,7 +20,7 @@ def policy (node, T=0.0):
     return util.softcount(node.N, T=T)
 
 class Node (object):
-    __slots__ = ['actions', 'children', 'N', 'Q', 'P']
+    __slots__ = ['actions', 'children', 'N', 'W', 'P']
 
     def __init__ (self, actions):
         num_actions = len(actions)
@@ -31,19 +31,19 @@ class Node (object):
 
         # Node statistics
         self.N = np.zeros(num_actions, dtype=np.int32)
-        self.Q = np.zeros(num_actions, dtype=np.float32)
+        self.W = np.zeros(num_actions, dtype=np.float32)
         self.P = np.zeros(num_actions, dtype=np.float32)
 
     def first_zero_index (self):
         return np.argmin(self.N)
 
     def puct_index (self):
-        # # If any N are zero, expand node before PUCT
-        # if np.any(self.N == 0):
-        #     return self.first_zero_index()
+        # If any N are zero, expand node before PUCT
+        if np.any(self.N == 0):
+            return self.first_zero_index()
 
         # Calculate action values and upper confidence bound
-        Q = self.Q
+        Q = self.W/self.N
         U = c_puct * self.P * np.sqrt(self.N.sum())/(1 + self.N)
 
         # Get index that maximizes sum of Q estimate and upper confidence bound
@@ -61,22 +61,12 @@ class Node (object):
 
     def select (self, index):        
         # Update node statistics
-        N = self.N[index]
-        Q = self.Q[index]
-
-        W = N*Q
-
-        self.N[index] = N + n_vl
-        self.Q[index] = (W - n_vl)/(N + n_vl)
+        self.N[index] += n_vl
+        self.W[index] -= n_vl
 
     def backup (self, index, value):
-        N = self.N[index]
-        Q = self.Q[index]
-
-        W = N*Q
-
-        self.N[index] = N - n_vl + 1
-        self.Q[index] = (W + n_vl + value)/(N - n_vl + 1)
+        self.N[index] += 1 - n_vl
+        self.W[index] += n_vl + value
 
     def pv (self):
         return self.pv_recurse([])
@@ -212,7 +202,7 @@ class MCTS (object):
 
         # Look up new node and value
         child = self.root.get_child(index)
-        value = self.root.Q[index]
+        value = self.root.W[index]/self.root.N[index]
 
         # Update root with child node
         self.root = child
@@ -285,7 +275,7 @@ class MCTS (object):
 
             if node.N[index]:
                 self.state.push_action(action)
-                self.print_nodes(child, node.Q[index], graph)
+                self.print_nodes(child, node.W[index], graph)
                 self.state.pop_action()
 
         return graph

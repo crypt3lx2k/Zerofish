@@ -10,9 +10,12 @@ import adapter
 import chess
 
 class GameState (object):
-    def __init__ (self, board=None):
+    def __init__ (self, board=None, fen=None):
         if board is None:
-            self.state = chess.Board()
+            if fen is None:
+                self.state = chess.Board()
+            else:
+                self.state = chess.Board(fen)
         else:
             self.state = board.copy()
 

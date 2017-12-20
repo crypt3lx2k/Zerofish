@@ -29,7 +29,7 @@ config = util.AttrDict (**{
     # Not parsed from command line
     'input_height' : 8,
     'input_width' : 8,
-    'input_channels' : 26,
+    'input_channels' : 18,
 
     'classes_shape' : (8, 8, 8, 8),
 

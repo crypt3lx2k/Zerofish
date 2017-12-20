@@ -21,6 +21,8 @@ import model
 import model_fn
 import output_fn
 
+starting_position = '4k3/8/8/8/8/8/8/3QK3 w - - 0 1'
+
 def play_game (inference):
     # Initialize memory
     actions = []
@@ -29,7 +31,7 @@ def play_game (inference):
     moves = []
 
     # Set up search tree
-    state = game_state.GameState()
+    state = game_state.GameState(fen=starting_position)
     tree = mcts.MCTS(inference, state, num_threads=8)
 
     # Play game
@@ -39,13 +41,22 @@ def play_game (inference):
         # Perform search
         node = tree.search(128)
 
+        N = node.N
+        W = node.W
+        P = node.P
+        san = map(state.state.san, map(state.parse_action, node.actions))
+
+        for n, w, p, s in zip(N, W, P, san):
+            q = w/n
+            print('{s}: n={n}, q={q}, p={p}'.format(n=n, q=q, p=p, s=s))
+
         # Calculate move probabilities and get action index
         probs = mcts.policy(node, T=1.0)
         index = np.random.choice(len(node.actions), p=probs)
 
         # Get action and update tree
         action = node.actions[index]
-        value = node.Q[index]
+        value = node.W[index]/node.N[index]
         move = tree.state.parse_action(action)
 
         print(tree.state.state.san(move), value)
@@ -63,13 +74,13 @@ def play_game (inference):
     winner = not tree.state.turn()
 
     print(tree.state.state.unicode())
-    print(' '.join([chess.Board().variation_san(moves), state.state.result()]))
+    print(' '.join([chess.Board(starting_position).variation_san(moves), state.state.result()]))
 
     return actions, policies, indices, outcome, winner
 
 def write_game_records (out_file, actions, policies, indices, outcome, winner):
     # Create new state
-    state = game_state.GameState()
+    state = game_state.GameState(fen=starting_position)
     moves = []
 
     # Run through game to create feature vectors and produce output
@@ -115,7 +126,7 @@ def write_pgn (pgn_dir, name, moves, outcome, winner):
         os.makedirs(dirs)
 
     path = os.path.join(dirs, name) + '.pgn'
-    pgn = [chess.Board().variation_san(moves)]
+    pgn = [chess.Board(starting_position).variation_san(moves)]
 
     if outcome:
         if winner == chess.WHITE:

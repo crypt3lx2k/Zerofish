@@ -118,8 +118,8 @@ def position_to_chw (position):
     occupancies_white = map(lambda bb : bb & colors[chess.WHITE], occupancies)
 
     squaresets = (
-        occupancies +
-        colors +
+        # occupancies +
+        # colors +
         occupancies_black +
         occupancies_white
     )
