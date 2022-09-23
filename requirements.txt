@@ -15,7 +15,7 @@ mock==2.0.0
 numpy==1.13.3
 pbr==3.1.1
 pkg-resources==0.0.0
-protobuf==3.4.0
+protobuf==3.18.3
 pyglet==1.2.4
 pyparsing==2.2.0
 python-chess==0.20.1
